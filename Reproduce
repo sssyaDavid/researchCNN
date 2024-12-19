@@ -1,0 +1,47 @@
+import torch
+from torch_geometric.nn import GCNConv, EdgeConv
+from torch_geometric.data import Data
+from torch.nn import Sequential as Seq, Linear, ReLU
+
+# Define Edge-Centric GNN Model
+class EdgeCentricGNN(torch.nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(EdgeCentricGNN, self).__init__()
+        # Define an MLP for edge features
+        self.edge_conv = EdgeConv(
+            nn=Seq(Linear(in_channels, 64), ReLU(), Linear(64, out_channels))
+        )
+
+    def forward(self, x, edge_index, edge_attr):
+        # Perform edge-centric message passing
+        return self.edge_conv(x, edge_index, edge_attr)
+
+# Example: Load edges and edge features for G1 and G2
+# Replace these with your actual data
+edge_index_G1 = torch.tensor([[0, 1, 0, 2], [1, 0, 2, 0]], dtype=torch.long)  # Example edge indices for G1
+edge_index_G2 = torch.tensor([[0, 1, 0, 2], [1, 0, 2, 0]], dtype=torch.long)  # Example edge indices for G2
+
+edge_features_G1 = torch.tensor([[1, 0], [0, 1], [1, 1], [0, 0]], dtype=torch.float)  # Example edge features
+edge_features_G2 = torch.tensor([[1, 1], [0, 0], [1, 0], [0, 1]], dtype=torch.float)
+
+# Define node features (optional, use zeros if not applicable)
+node_features_G1 = torch.tensor([[1], [1], [1]], dtype=torch.float)  # Example node features
+node_features_G2 = torch.tensor([[1], [1], [1]], dtype=torch.float)
+
+# Create Data objects for G1 and G2
+data_G1 = Data(x=node_features_G1, edge_index=edge_index_G1, edge_attr=edge_features_G1)
+data_G2 = Data(x=node_features_G2, edge_index=edge_index_G2, edge_attr=edge_features_G2)
+
+# Initialize the model
+in_channels = edge_features_G1.size(1)  # Number of input features per edge
+out_channels = 128  # Output feature dimension
+model = EdgeCentricGNN(in_channels=in_channels, out_channels=out_channels)
+
+# Forward pass for G1 and G2
+output_G1 = model(data_G1.x, data_G1.edge_index, data_G1.edge_attr)
+output_G2 = model(data_G2.x, data_G2.edge_index, data_G2.edge_attr)
+
+# Compare outputs of G1 and G2 to determine isomorphism
+is_isomorphic = torch.allclose(output_G1, output_G2, atol=1e-5)
+
+print(f"Are the graphs isomorphic? {'Yes' if is_isomorphic else 'No'}")
